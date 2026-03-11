@@ -35,38 +35,8 @@
       pointer-events:none; z-index:0;
     }
 
-    /* ══════════════════════════════
-       FULL-SCREEN CURTAIN WIPE
-    ══════════════════════════════ */
-    #page-curtain {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(160deg, var(--rose-dark) 0%, var(--rose) 50%, var(--gold) 100%);
-      transform: translateY(-100%);
-      z-index: 500;
-      pointer-events: none;
-      will-change: transform;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #page-curtain .curtain-icon {
-      font-size: 56px;
-      opacity: 0;
-      transition: opacity 0.15s;
-      filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));
-    }
-    #page-curtain.running .curtain-icon { opacity: 1; }
-
-    @keyframes curtainDown {
-      0%   { transform: translateY(-100%); }
-      42%  { transform: translateY(0%);    }
-      58%  { transform: translateY(0%);    }
-      100% { transform: translateY(100%);  }
-    }
-    #page-curtain.running {
-      animation: curtainDown 0.75s cubic-bezier(0.76, 0, 0.24, 1) forwards;
-    }
+    /* simple fade transition */
+    .screen { transition: opacity 0.15s ease; }
 
     /* ══════════════════════════════
        SCREENS
@@ -450,9 +420,7 @@
 <body>
 
 <!-- ══ CURTAIN ══ -->
-<div id="page-curtain">
-  <span class="curtain-icon" id="curtain-icon">💕</span>
-</div>
+
 
 <!-- ══ WELCOME ══ -->
 <div id="screen-welcome" class="screen active">
@@ -562,35 +530,14 @@
 
 <script>
 // ════════════════════════════════════
-//  CURTAIN TRANSITION (top → bottom)
+//  SCREEN TRANSITION (simple fade)
 // ════════════════════════════════════
-const CURTAIN_ICONS = { 'screen-welcome':'💌','screen-question':'✨','screen-golden':'📖','screen-results':'🎉','screen-leaderboard':'🏆' };
-let curtainBusy = false;
-
 function wipeToScreen(targetId, icon, onMid) {
-  if (curtainBusy) return;
-  curtainBusy = true;
-  const curtain = document.getElementById('page-curtain');
-  const curtainIcon = document.getElementById('curtain-icon');
-  curtainIcon.textContent = icon || CURTAIN_ICONS[targetId] || '💕';
-  curtain.classList.add('running');
-
-  // At midpoint (curtain covers screen) → swap content
-  setTimeout(() => {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(targetId).classList.add('active');
-    window.scrollTo(0, 0);
-    if (onMid) onMid();
-  }, 320); // ~42% of 750ms
-
-  // After full animation → cleanup
-  setTimeout(() => {
-    curtain.classList.remove('running');
-    curtain.style.transform = 'translateY(-100%)'; // reset instantly
-    void curtain.offsetWidth; // reflow
-    curtain.style.transform = '';
-    curtainBusy = false;
-  }, 760);
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(targetId);
+  target.classList.add('active');
+  window.scrollTo(0, 0);
+  if (onMid) onMid();
 }
 
 // ════════════════════════════════════
