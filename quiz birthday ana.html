@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz — Do you really know me? 💕</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --rose: #e8506a;
+      --rose-dark: #c93050;
+      --rose-light: #fce8ec;
+      --cream: #fff9f5;
+      --gold: #d4a853;
+      --gold-light: #fdf3dc;
+      --text: #2a1520;
+      --text-soft: #7a5060;
+      --correct: #3dba7e;
+      --wrong: #e85050;
+      --radius: 20px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content:''; position:fixed; inset:0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(232,80,106,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(212,168,83,0.07) 0%, transparent 70%);
+      pointer-events:none; z-index:0;
+    }
+
+    /* ══════════════════════════════
+       FULL-SCREEN CURTAIN WIPE
+    ══════════════════════════════ */
+    #page-curtain {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(160deg, var(--rose-dark) 0%, var(--rose) 50%, var(--gold) 100%);
+      transform: translateY(-100%);
+      z-index: 500;
+      pointer-events: none;
+      will-change: transform;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #page-curtain .curtain-icon {
+      font-size: 56px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));
+    }
+    #page-curtain.running .curtain-icon { opacity: 1; }
+
+    @keyframes curtainDown {
+      0%   { transform: translateY(-100%); }
+      42%  { transform: translateY(0%);    }
+      58%  { transform: translateY(0%);    }
+      100% { transform: translateY(100%);  }
+    }
+    #page-curtain.running {
+      animation: curtainDown 0.75s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+    }
+
+    /* ══════════════════════════════
+       SCREENS
+    ══════════════════════════════ */
+    .screen {
+      display: none; position: relative; z-index: 1;
+      min-height: 100vh; padding: 24px 20px 40px;
+      max-width: 520px; margin: 0 auto;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 20px;
+    }
+    .screen.active { display: flex; }
+
+    /* ══════════════════════════════
+       HERO
+    ══════════════════════════════ */
+    .hero-emoji {
+      font-size: clamp(52px, 13vw, 80px); line-height: 1;
+      filter: drop-shadow(0 6px 20px rgba(232,80,106,0.3));
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 7.5vw, 42px); font-weight: 900;
+      text-align: center; line-height: 1.15; color: var(--rose-dark);
+    }
+    h1 span { font-style: italic; color: var(--rose); }
+    .subtitle {
+      text-align: center; color: var(--text-soft);
+      font-size: 15px; line-height: 1.6; max-width: 340px;
+    }
+
+    /* ══════════════════════════════
+       CARD
+    ══════════════════════════════ */
+    .card {
+      background: white; border-radius: var(--radius);
+      padding: 24px 20px; width: 100%;
+      box-shadow: 0 4px 32px rgba(232,80,106,0.1), 0 1px 4px rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .card label {
+      display: block; font-size: 12px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-soft); margin-bottom: 8px;
+    }
+    .name-row { display: flex; gap: 10px; align-items: center; }
+    .emoji-trigger {
+      width: 56px; height: 50px;
+      border: 2px solid var(--rose-light); border-radius: 12px;
+      background: var(--cream); font-size: 24px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: border-color .2s, transform .15s; user-select: none;
+    }
+    .emoji-trigger:hover { border-color: var(--rose); transform: scale(1.08); }
+    .card input[type="text"], .card textarea {
+      flex: 1; padding: 13px 16px;
+      border: 2px solid var(--rose-light); border-radius: 12px;
+      font-size: 16px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); background: var(--cream);
+      outline: none; transition: border-color .2s;
+    }
+    .card input[type="text"]:focus, .card textarea:focus { border-color: var(--rose); }
+    .card input[type="text"]::placeholder, .card textarea::placeholder { color: #c8b0b8; }
+    .card textarea { resize: none; min-height: 100px; width: 100%; }
+
+    /* ══════════════════════════════
+       EMOJI PICKER
+    ══════════════════════════════ */
+    .emoji-picker {
+      display: none; flex-wrap: wrap; gap: 6px;
+      padding: 12px; background: var(--cream);
+      border: 2px solid var(--rose-light); border-radius: 16px;
+    }
+    .emoji-picker.open { display: flex; }
+    .emoji-opt {
+      font-size: 24px; cursor: pointer; padding: 5px;
+      border-radius: 8px; transition: transform .12s, background .12s; line-height: 1;
+    }
+    .emoji-opt:hover { transform: scale(1.3); background: rgba(232,80,106,0.1); }
+    .emoji-opt.selected { background: var(--rose-light); outline: 2px solid var(--rose); }
+
+    /* ══════════════════════════════
+       BUTTONS
+    ══════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 15px 28px; border: none; border-radius: 50px;
+      font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: transform .15s, box-shadow .15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+      color: white; box-shadow: 0 6px 24px rgba(232,80,106,0.35); width: 100%;
+    }
+    .btn-primary:hover { box-shadow: 0 8px 28px rgba(232,80,106,0.45); transform: translateY(-1px); }
+    .btn-secondary { background: white; color: var(--rose-dark); border: 2px solid var(--rose-light); width: 100%; }
+    .btn-gold {
+      background: linear-gradient(135deg, #d4a853, #c4913a);
+      color: white; box-shadow: 0 6px 24px rgba(212,168,83,0.4); width: 100%;
+    }
+    .btn-gold:hover { box-shadow: 0 8px 28px rgba(212,168,83,0.5); transform: translateY(-1px); }
+
+    /* ══════════════════════════════
+       TIMER
+    ══════════════════════════════ */
+    .timer-wrap { width: 100%; display: flex; align-items: center; gap: 12px; }
+    .timer-bar-bg { flex: 1; height: 8px; background: var(--rose-light); border-radius: 99px; overflow: hidden; }
+    .timer-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--correct), var(--gold));
+      transition: width 0.9s linear, background .3s;
+    }
+    .timer-bar-fill.urgent { background: linear-gradient(90deg, #f59e0b, var(--wrong)); }
+    .timer-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px; font-weight: 900; color: var(--rose-dark);
+      min-width: 34px; text-align: center; transition: color .3s;
+    }
+    .timer-num.urgent { color: var(--wrong); animation: pulse .5s ease infinite alternate; }
+    @keyframes pulse { from{transform:scale(1)} to{transform:scale(1.15)} }
+
+    /* ══════════════════════════════
+       STREAK BANNER
+    ══════════════════════════════ */
+    .streak-banner {
+      position: fixed; top: 18px; left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: linear-gradient(135deg, #ff6b35, #f7c948);
+      color: white; padding: 10px 24px; border-radius: 50px;
+      font-size: 16px; font-weight: 800; z-index: 150;
+      transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap; box-shadow: 0 6px 24px rgba(255,107,53,0.4);
+    }
+    .streak-banner.show { transform: translateX(-50%) translateY(0); }
+
+    /* ══════════════════════════════
+       PROGRESS
+    ══════════════════════════════ */
+    .progress-bar-wrap { width: 100%; height: 6px; background: var(--rose-light); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--rose), var(--gold)); border-radius: 99px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+    .q-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .q-counter { font-size: 13px; font-weight: 600; color: var(--text-soft); }
+    .q-score-badge { background: var(--rose-light); color: var(--rose-dark); font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 99px; }
+
+    /* ══════════════════════════════
+       IMAGE
+    ══════════════════════════════ */
+    .q-image-wrap {
+      width: 100%; border-radius: 16px; overflow: hidden;
+      background: var(--rose-light); position: relative;
+    }
+    .q-image-wrap img { width: 100%; height: auto; object-fit: contain; display: block; }
+    .q-image-wrap .img-placeholder {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 48px; opacity: 0.4;
+    }
+    .q-text {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(16px, 4.2vw, 21px); font-weight: 700;
+      text-align: center; line-height: 1.4;
+    }
+
+    /* ══════════════════════════════
+       OPTIONS
+    ══════════════════════════════ */
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: 100%; }
+    @media(max-width:340px) { .options-grid { grid-template-columns: 1fr; } }
+    .option-btn {
+      background: white; border: 2px solid var(--rose-light);
+      border-radius: 14px; padding: 13px 11px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500;
+      color: var(--text); text-align: left; line-height: 1.4;
+      transition: background .15s, border-color .15s, transform .12s;
+      display: flex; align-items: flex-start; gap: 9px; min-height: 60px;
+    }
+    .option-btn:hover:not(:disabled) { background: var(--rose-light); border-color: var(--rose); transform: translateY(-2px); }
+    .option-btn:disabled { cursor: default; }
+    .option-btn .letter {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 24px; height: 24px; background: var(--rose-light);
+      color: var(--rose-dark); border-radius: 7px;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
+    .option-btn .opt-text { flex: 1; padding-top: 2px; }
+    .option-btn.correct { background: #e8f9f1; border-color: var(--correct); }
+    .option-btn.correct .letter { background: var(--correct); color: white; }
+    .option-btn.wrong { background: #fdf0f0; border-color: var(--wrong); }
+    .option-btn.wrong .letter { background: var(--wrong); color: white; }
+    .option-btn.timeout { background: #fff8e8; border-color: var(--gold); opacity: 0.7; }
+
+    /* ══════════════════════════════
+       TOAST
+    ══════════════════════════════ */
+    .feedback-toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--text); color: white;
+      padding: 13px 26px; border-radius: 50px;
+      font-size: 15px; font-weight: 600; z-index: 100;
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap; max-width: 90vw; text-align: center;
+    }
+    .feedback-toast.show { transform: translateX(-50%) translateY(0); }
+    .feedback-toast.good { background: var(--correct); }
+    .feedback-toast.bad  { background: var(--wrong); }
+    .feedback-toast.info { background: var(--gold); }
+
+    /* ══════════════════════════════
+       RESULTS
+    ══════════════════════════════ */
+    .score-circle {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      box-shadow: 0 8px 40px rgba(232,80,106,0.4); color: white;
+    }
+    .score-circle .score-num { font-family: 'Playfair Display', serif; font-size: 44px; font-weight: 900; line-height: 1; }
+    .score-circle .score-total { font-size: 14px; opacity: 0.85; }
+    .result-msg { font-family: 'Playfair Display', serif; font-size: clamp(19px,5vw,25px); font-weight: 700; text-align: center; line-height: 1.3; }
+    .result-sub { font-size: 14px; color: var(--text-soft); text-align: center; line-height: 1.6; }
+
+    /* ══════════════════════════════
+       GOLDEN BOOK
+    ══════════════════════════════ */
+    .golden-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(22px,6vw,30px); font-weight: 900;
+      color: var(--gold); text-align: center;
+    }
+    .golden-sub { font-size: 14px; color: var(--text-soft); text-align: center; line-height: 1.6; max-width: 320px; }
+
+    /* ══════════════════════════════
+       LEADERBOARD
+    ══════════════════════════════ */
+    h2 { font-family: 'Playfair Display', serif; font-size: clamp(22px,6vw,30px); font-weight: 900; text-align: center; color: var(--rose-dark); }
+    .leaderboard-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .lb-item {
+      background: white; border-radius: 14px; padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      animation: fadeUp .35s ease both;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .lb-item:nth-child(1) { background: linear-gradient(135deg,#fffbea,#fff3c4); border: 1.5px solid #FFD70060; }
+    .lb-rank { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: #ddd; min-width: 32px; text-align: center; }
+    .lb-item:nth-child(1) .lb-rank { color: #FFD700; }
+    .lb-item:nth-child(2) .lb-rank { color: #C0C0C0; }
+    .lb-item:nth-child(3) .lb-rank { color: #CD7F32; }
+    .lb-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .lb-name { font-weight: 600; font-size: 16px; }
+    .lb-meta { font-size: 11px; color: var(--text-soft); }
+    .lb-score-badge { background: var(--rose-light); color: var(--rose-dark); font-weight: 800; font-size: 14px; padding: 5px 13px; border-radius: 99px; white-space: nowrap; }
+    .lb-perfect-badge { background: linear-gradient(135deg,#FFD700,#f59e0b); color: white; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 99px; display: inline-block; margin-top: 2px; }
+    .lb-winner-badge { text-align: center; font-size: 13px; color: var(--text-soft); }
+    .lb-winner-badge strong { color: var(--gold); }
+    .empty-lb { text-align: center; color: var(--text-soft); font-size: 15px; padding: 24px; }
+    .lb-tabs { display: flex; gap: 10px; width: 100%; }
+    .lb-tab { flex: 1; padding: 11px; border-radius: 12px; border: 2px solid var(--rose-light); background: white; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; color: var(--text-soft); }
+    .lb-tab.active { background: var(--rose); border-color: var(--rose); color: white; }
+    .lb-tab.gold-tab.active { background: linear-gradient(135deg,#d4a853,#c4913a); border-color: var(--gold); color: white; }
+
+    /* ══════════════════════════════
+       GOLDEN BOOK ENTRIES
+    ══════════════════════════════ */
+    .gb-entry {
+      background: white; border-radius: 16px; padding: 16px 18px;
+      box-shadow: 0 2px 16px rgba(212,168,83,0.12);
+      border: 1.5px solid var(--gold-light);
+      animation: fadeUp .35s ease both;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .gb-entry-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .gb-author { font-weight: 700; font-size: 15px; color: var(--text); }
+    .gb-date { font-size: 11px; color: var(--text-soft); }
+    .gb-message { font-size: 14px; color: var(--text); line-height: 1.6; font-style: italic; }
+    .gb-score-chip { font-size: 11px; background: var(--gold-light); color: var(--gold); font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+
+    /* ══════════════════════════════
+       PASSWORD MODAL
+    ══════════════════════════════ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(42,21,32,0.6); backdrop-filter: blur(5px);
+      z-index: 300; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white; border-radius: 24px; padding: 32px 28px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; gap: 14px;
+      animation: popIn .25s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
+    .modal-box h3 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: var(--rose-dark); text-align: center; }
+    .modal-box p { font-size: 14px; color: var(--text-soft); text-align: center; }
+    .modal-box input {
+      width: 100%; padding: 13px 16px; border: 2px solid var(--rose-light);
+      border-radius: 12px; font-size: 16px; font-family: 'DM Sans', sans-serif;
+      outline: none; transition: border-color .2s; color: var(--text);
+      background: var(--cream); text-align: center; letter-spacing: .1em;
+    }
+    .modal-box input:focus { border-color: var(--rose); }
+    .modal-box .error-msg { font-size: 13px; color: var(--wrong); text-align: center; font-weight: 600; min-height: 18px; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions .btn { flex: 1; padding: 13px; font-size: 14px; }
+
+    /* ══════════════════════════════
+       MISC
+    ══════════════════════════════ */
+    .btn-ghost { background: transparent; color: var(--text-soft); border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 8px; }
+    .btn-ghost:hover { color: var(--rose-dark); }
+    .divider { width: 48px; height: 3px; background: linear-gradient(90deg, var(--rose), var(--gold)); border-radius: 99px; }
+    .confetti-piece { position: fixed; border-radius: 2px; animation: confettiFall linear forwards; z-index: 200; pointer-events: none; }
+    @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+  </style>
+</head>
+<body>
+
+<!-- ══ CURTAIN ══ -->
+<div id="page-curtain">
+  <span class="curtain-icon" id="curtain-icon">💕</span>
+</div>
+
+<!-- ══ WELCOME ══ -->
+<div id="screen-welcome" class="screen active">
+  <div class="hero-emoji">💌</div>
+  <h1>Do you really<br><span>know me?</span></h1>
+  <p class="subtitle">11 questions to prove you know everything about me. Enter your name to join the leaderboard 🏆</p>
+  <div class="card">
+    <div>
+      <label>Your name &amp; emoji</label>
+      <div class="name-row">
+        <div class="emoji-trigger" id="emoji-trigger" onclick="togglePicker(event)">🌸</div>
+        <input type="text" id="player-name" placeholder="Write your name…" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="30">
+      </div>
+    </div>
+    <div class="emoji-picker" id="emoji-picker"></div>
+  </div>
+  <button class="btn btn-primary" onclick="startQuiz()">Let's go 💕</button>
+  <button class="btn btn-secondary" onclick="wipeToScreen('screen-leaderboard', '🏆', renderLeaderboardContent)">🏆 Leaderboard &amp; Golden Book</button>
+</div>
+
+<!-- ══ QUESTION ══ -->
+<div id="screen-question" class="screen">
+  <div class="q-header">
+    <span class="q-counter" id="q-counter">Question 1 / 11</span>
+    <span class="q-score-badge" id="q-score-live">Score: 0</span>
+  </div>
+  <div class="progress-bar-wrap" style="width:100%">
+    <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-bar-bg">
+      <div class="timer-bar-fill" id="timer-bar" style="width:100%"></div>
+    </div>
+    <div class="timer-num" id="timer-num">15</div>
+  </div>
+  <div class="q-image-wrap">
+    <div class="img-placeholder" id="img-ph">📷</div>
+    <img id="q-img" src="" alt="" style="display:none"
+      onload="this.style.display='block';document.getElementById('img-ph').style.display='none'"
+      onerror="this.style.display='none'">
+  </div>
+  <p class="q-text" id="q-text"></p>
+  <div class="options-grid" id="options-grid"></div>
+  <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()" style="display:none;margin-top:4px">
+    Next question →
+  </button>
+</div>
+
+<!-- ══ GOLDEN BOOK WRITE ══ -->
+<div id="screen-golden" class="screen">
+  <div class="hero-emoji" style="font-size:52px">📖</div>
+  <div class="golden-title">Golden Book</div>
+  <p class="golden-sub">Leave a little birthday message for Anagha! 🎂<br>She'll be able to read all your words ✨</p>
+  <div class="card">
+    <div>
+      <label>Your message for Anagha</label>
+      <textarea id="gb-msg" placeholder="Write something sweet… 💕" maxlength="280"></textarea>
+    </div>
+  </div>
+  <button class="btn btn-gold" onclick="submitGoldenMessage()">Send my message 💌</button>
+  <button class="btn btn-secondary" onclick="skipGoldenBook()">Skip &amp; see results</button>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div id="screen-results" class="screen">
+  <div class="score-circle" id="score-circle">
+    <span class="score-num" id="final-score-num">0</span>
+    <span class="score-total" id="final-score-total">/ 11</span>
+  </div>
+  <div class="divider"></div>
+  <p class="result-msg" id="result-msg"></p>
+  <p class="result-sub" id="result-sub"></p>
+  <button class="btn btn-primary" onclick="wipeToScreen('screen-leaderboard','🏆',renderLeaderboardContent)">🏆 See leaderboard</button>
+  <button class="btn btn-secondary" onclick="wipeToScreen('screen-welcome','💌')">Play again</button>
+</div>
+
+<!-- ══ LEADERBOARD ══ -->
+<div id="screen-leaderboard" class="screen">
+  <div class="hero-emoji" style="font-size:48px">🏆</div>
+  <h2 id="lb-title">Leaderboard</h2>
+  <div class="lb-winner-badge" id="lb-winner-msg"></div>
+  <div class="lb-tabs">
+    <button class="lb-tab active" id="tab-scores" onclick="switchTab('scores')">🏆 Scores</button>
+    <button class="lb-tab gold-tab" id="tab-golden" onclick="switchTab('golden')">📖 Golden Book</button>
+  </div>
+  <div class="leaderboard-list" id="lb-list"></div>
+  <button class="btn btn-primary" onclick="wipeToScreen('screen-welcome','💌')">Play my turn</button>
+  <button class="btn-ghost" onclick="askResetPassword()">Reset leaderboard</button>
+</div>
+
+<!-- ══ PASSWORD MODAL ══ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <h3>🔒 Admin only</h3>
+    <p>Enter the password to reset everything.</p>
+    <input type="password" id="modal-pwd" placeholder="Password…" onkeydown="if(event.key==='Enter')confirmReset()">
+    <div class="error-msg" id="modal-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmReset()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="streak-banner" id="streak-banner"></div>
+<div class="feedback-toast" id="feedback-toast"></div>
+
+<script>
+// ════════════════════════════════════
+//  CURTAIN TRANSITION (top → bottom)
+// ════════════════════════════════════
+const CURTAIN_ICONS = { 'screen-welcome':'💌','screen-question':'✨','screen-golden':'📖','screen-results':'🎉','screen-leaderboard':'🏆' };
+let curtainBusy = false;
+
+function wipeToScreen(targetId, icon, onMid) {
+  if (curtainBusy) return;
+  curtainBusy = true;
+  const curtain = document.getElementById('page-curtain');
+  const curtainIcon = document.getElementById('curtain-icon');
+  curtainIcon.textContent = icon || CURTAIN_ICONS[targetId] || '💕';
+  curtain.classList.add('running');
+
+  // At midpoint (curtain covers screen) → swap content
+  setTimeout(() => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(targetId).classList.add('active');
+    window.scrollTo(0, 0);
+    if (onMid) onMid();
+  }, 320); // ~42% of 750ms
+
+  // After full animation → cleanup
+  setTimeout(() => {
+    curtain.classList.remove('running');
+    curtain.style.transform = 'translateY(-100%)'; // reset instantly
+    void curtain.offsetWidth; // reflow
+    curtain.style.transform = '';
+    curtainBusy = false;
+  }, 760);
+}
+
+// ════════════════════════════════════
+//  EMOJI PICKER
+// ════════════════════════════════════
+const EMOJIS = [
+  '🌸','🌺','🌷','🌹','🌻','🌼','💐','🦋','🐝','🐞',
+  '🦄','🐰','🐱','🐶','🐼','🦩','🐚','🍓','🍒','🍑',
+  '🍰','🎀','✨','💫','🌙','⭐','🌈','💎','💌','💕',
+  '🥂','🎉','🍷','🌴','🫶','🩷','🫧','🌊','🍧','🎠'
+];
+let selectedEmoji = '🌸';
+(function(){
+  const p = document.getElementById('emoji-picker');
+  EMOJIS.forEach((em, i) => {
+    const s = document.createElement('span');
+    s.className = 'emoji-opt' + (i===0?' selected':'');
+    s.textContent = em;
+    s.onclick = e => { e.stopPropagation(); pickEmoji(em, s); };
+    p.appendChild(s);
+  });
+})();
+function pickEmoji(em, el) {
+  document.querySelectorAll('.emoji-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected'); selectedEmoji = em;
+  document.getElementById('emoji-trigger').textContent = em; closePicker();
+}
+function togglePicker(e) { e.stopPropagation(); document.getElementById('emoji-picker').classList.toggle('open'); }
+function closePicker() { document.getElementById('emoji-picker').classList.remove('open'); }
+document.addEventListener('click', closePicker);
+
+// ════════════════════════════════════
+//  QUESTIONS (from CSV)
+// ════════════════════════════════════
+const questions = [
+  { question:"What is my favorite color?", options:["Red","Black","Green","Pink"], answer:"D", image:"https://drive.google.com/thumbnail?id=1DwgieTTQcwQlRWSxPmIV7CQhm-9CIy-P&sz=w1000" },
+  { question:"What is my dream travel destination right now?", options:["Japan","Iceland","A tiny village where nothing happens","A beach where I do absolutely nothing for a week"], answer:"A", image:"https://drive.google.com/thumbnail?id=1K0wp-1NqqSDxCG-lvbze9mI3MYSBsGBe&sz=w1000" },
+  { question:"Which dessert would I choose every single time?", options:["Chocolate cake","Tiramisu","Ice cream","Crème brûlée"], answer:"B", image:"https://drive.google.com/thumbnail?id=1w7OOR2JR07YicceZBZnvzhWh8Mrr9-SS&sz=w1000" },
+  { question:"If I could live in another city for a year, where would it be?", options:["Tokyo","New York","Milan","Barcelona"], answer:"D", image:"https://drive.google.com/thumbnail?id=1csTvGfvGyCwkri0Nx4anz-XNrSTLYQM5&sz=w1000" },
+  { question:"What drink am I most likely to order on a night out?", options:["Espresso martini","Wine","Margarita","Just water actually"], answer:"A", image:"https://drive.google.com/thumbnail?id=1J2MBh-Jmsq_Q0zQtGFVyGrv1akBHb73M&sz=w1000" },
+  { question:"What would my friends say is my most chaotic habit?", options:["Overanalyzing everything","Online shopping late at night","Saying 'no drinks for me' but actually not less than 2 drinks","Planning trips I might never take"], answer:"C", image:"https://drive.google.com/thumbnail?id=1sun5KPeMCvM7-EKAUSJ6--o7hfoawbRE&sz=w1000" },
+  { question:"If I had to adopt a pet tomorrow, what would it be?", options:["A golden retriever","A tiny chaotic chihuahua","A cat with attitude","A very dramatic parrot"], answer:"D", image:"https://drive.google.com/thumbnail?id=1XkmITXGFsGA-T24B1nnyLeMpWZMvCEN5&sz=w1000" },
+  { question:"What would my villain origin story be?", options:["Someone stole my dessert","The Paris metro delayed me one too many times","Someone insulted my outfit","Bad coffee"], answer:"C", image:"https://drive.google.com/thumbnail?id=1vZGzMRRUc9DqUPk5jWH04JSngSbeKlk7&sz=w1000" },
+  { question:"If I had to open a random business tomorrow, what would it be?", options:["An art café","A wine bar","A concept store","A dessert place"], answer:"A", image:"https://drive.google.com/thumbnail?id=1E-vNliUAgWulWPkl4xftwSYeKizfqtkN&sz=w1000" },
+  { question:"What would be my ideal Sunday?", options:["Brunch with friends","Long walk around Paris","Staying home watching something cozy","Doing absolutely nothing and ordering food"], answer:"C", image:"https://drive.google.com/thumbnail?id=1J_5jEMLmEt_AgTRnZvohX1MhmI0AXGhJ&sz=w1000" },
+  { question:"How old am I turning tonight?", options:["21","24","26","Emotionally still 14"], answer:"D", image:"https://drive.google.com/thumbnail?id=1LXY14HAU5X0t8YZpboRTMfrK0plxsHt2&sz=w1000" }
+];
+
+// ════════════════════════════════════
+//  STATE
+// ════════════════════════════════════
+let playerName='', playerDisplay='', currentQ=0, score=0, answered=false, streak=0;
+let timerInterval=null, timeLeft=15;
+const TOTAL_TIME=15, LETTERS=['A','B','C','D'];
+
+// ════════════════════════════════════
+//  START
+// ════════════════════════════════════
+function startQuiz() {
+  const input = document.getElementById('player-name');
+  const name = input.value.trim();
+  if (!name) {
+    input.style.borderColor='var(--wrong)'; input.focus();
+    input.placeholder='⚠️ Write your name first!';
+    setTimeout(()=>{input.style.borderColor='';input.placeholder='Write your name…';},2000);
+    return;
+  }
+  closePicker();
+  playerName = name.charAt(0).toUpperCase()+name.slice(1).toLowerCase();
+  playerDisplay = selectedEmoji+' '+playerName;
+  currentQ=0; score=0; streak=0; answered=false;
+  wipeToScreen('screen-question','✨', ()=>{ renderQuestion(); });
+}
+
+function restartFromWelcome() {
+  document.getElementById('player-name').value='';
+  wipeToScreen('screen-welcome','💌');
+}
+
+// ════════════════════════════════════
+//  TIMER
+// ════════════════════════════════════
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft=TOTAL_TIME; updateTimerUI();
+  timerInterval=setInterval(()=>{ timeLeft--; updateTimerUI(); if(timeLeft<=0){clearInterval(timerInterval);timeOut();} },1000);
+}
+function updateTimerUI() {
+  const pct=(timeLeft/TOTAL_TIME)*100;
+  const bar=document.getElementById('timer-bar'), num=document.getElementById('timer-num');
+  bar.style.width=pct+'%';
+  const urgent=timeLeft<=5;
+  bar.classList.toggle('urgent',urgent); num.classList.toggle('urgent',urgent);
+  num.textContent=timeLeft;
+}
+function timeOut() {
+  if(answered) return;
+  answered=true; streak=0;
+  document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;b.classList.add('timeout');});
+  showToast("⏱️ Time's up!",'info');
+  setTimeout(()=>{
+    const nxt=document.getElementById('btn-next');
+    nxt.style.display='flex';
+    nxt.textContent=currentQ<questions.length-1?'Next question →':'See my results 🎉';
+  },800);
+}
+
+// ════════════════════════════════════
+//  RENDER QUESTION
+// ════════════════════════════════════
+function renderQuestion() {
+  const q=questions[currentQ];
+  answered=false;
+  document.getElementById('q-counter').textContent=`Question ${currentQ+1} / ${questions.length}`;
+  document.getElementById('q-score-live').textContent=`Score: ${score}`;
+  document.getElementById('progress-fill').style.width=`${(currentQ/questions.length)*100}%`;
+  const img=document.getElementById('q-img'), ph=document.getElementById('img-ph');
+  img.style.display='none'; ph.style.display='flex';
+  if(q.image) img.src=q.image;
+  document.getElementById('q-text').textContent=q.question;
+  const grid=document.getElementById('options-grid');
+  grid.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='option-btn';
+    btn.innerHTML=`<span class="letter">${LETTERS[i]}</span><span class="opt-text">${opt}</span>`;
+    btn.onclick=()=>selectAnswer(i);
+    grid.appendChild(btn);
+  });
+  document.getElementById('btn-next').style.display='none';
+  startTimer();
+}
+
+// ════════════════════════════════════
+//  SELECT ANSWER
+// ════════════════════════════════════
+function selectAnswer(idx) {
+  if(answered) return;
+  answered=true; clearInterval(timerInterval);
+  const q=questions[currentQ];
+  const correctIdx=LETTERS.indexOf(q.answer);
+  const btns=document.querySelectorAll('.option-btn');
+  btns.forEach(b=>b.disabled=true);
+  if(idx===correctIdx){
+    btns[idx].classList.add('correct'); score++; streak++;
+    if(streak>=2) showStreak(streak);
+    showToast('✅ Correct!','good'); spawnConfetti(5);
+  } else {
+    btns[idx].classList.add('wrong'); streak=0;
+    showToast('❌ Wrong answer!','bad');
+  }
+  document.getElementById('q-score-live').textContent=`Score: ${score}`;
+  setTimeout(()=>{
+    const nxt=document.getElementById('btn-next');
+    nxt.style.display='flex';
+    nxt.textContent=currentQ<questions.length-1?'Next question →':'See my results 🎉';
+  },800);
+}
+
+function nextQuestion() {
+  currentQ++;
+  if(currentQ>=questions.length){
+    wipeToScreen('screen-golden','📖',()=>{ document.getElementById('gb-msg').value=''; });
+  } else {
+    wipeToScreen('screen-question','✨',()=>{ renderQuestion(); });
+  }
+}
+
+// ════════════════════════════════════
+//  STREAK
+// ════════════════════════════════════
+let streakTimer;
+function showStreak(n){
+  const msgs={2:'🔥 2 in a row!',3:'🔥🔥 3 in a row!',4:'🔥🔥🔥 4 in a row!',5:'🔥🔥🔥🔥 On fire!'};
+  const b=document.getElementById('streak-banner');
+  b.textContent=msgs[n]||(n+'🔥 in a row! Unstoppable!');
+  b.classList.add('show'); clearTimeout(streakTimer);
+  streakTimer=setTimeout(()=>b.classList.remove('show'),2000);
+}
+
+// ════════════════════════════════════
+//  GOLDEN BOOK
+// ════════════════════════════════════
+function submitGoldenMessage(){
+  const msg=document.getElementById('gb-msg').value.trim();
+  if(msg) saveGoldenMessage(playerDisplay,msg,score);
+  showResults();
+}
+function skipGoldenBook(){ showResults(); }
+
+// ════════════════════════════════════
+//  RESULTS
+// ════════════════════════════════════
+function showResults(){
+  saveScore(playerDisplay,score);
+  document.getElementById('final-score-num').textContent=score;
+  document.getElementById('final-score-total').textContent=`/ ${questions.length}`;
+  const pct=score/questions.length;
+  let msg,sub;
+  if(pct===1){
+    msg='💯 Perfect! You know me by heart ❤️';
+    sub=`${playerName}, you deserve that first drink! 🍾`;
+    document.getElementById('score-circle').style.background='linear-gradient(135deg,#FFD700,#f59e0b)';
+    spawnConfetti(50);
+  } else {
+    document.getElementById('score-circle').style.background='linear-gradient(135deg,var(--rose),var(--rose-dark))';
+    if(pct>=0.8){msg='🌟 Excellent! Really impressive!';sub=`${playerName}, you're at the top of the leaderboard!`;spawnConfetti(20);}
+    else if(pct>=0.6){msg='😊 Good job, but room to improve!';sub=`${playerName}, we need to revisit some memories…`;}
+    else if(pct>=0.4){msg='😅 Nice try though!';sub=`${playerName}, you're clearly not listening enough 😜`;}
+    else{msg='🙈 We have a problem!';sub=`${playerName}, you'll need to play again… several times!`;}
+  }
+  document.getElementById('result-msg').textContent=msg;
+  document.getElementById('result-sub').textContent=`${sub} — ${score} / ${questions.length}`;
+  wipeToScreen('screen-results','🎉');
+}
+
+// ════════════════════════════════════
+//  STORAGE
+// ════════════════════════════════════
+const LB_KEY='quiz_lb_v3',GB_KEY='quiz_gb_v1';
+function saveScore(display,pts){
+  const lb=getLeaderboard();
+  const key=display.split(' ').slice(1).join(' ').toLowerCase();
+  const ex=lb.find(e=>e.name.split(' ').slice(1).join(' ').toLowerCase()===key);
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  if(ex){if(pts>ex.score){ex.score=pts;ex.name=display;ex.date=dateStr;}}
+  else lb.push({name:display,score:pts,date:dateStr});
+  lb.sort((a,b)=>b.score-a.score);
+  localStorage.setItem(LB_KEY,JSON.stringify(lb));
+}
+function getLeaderboard(){try{return JSON.parse(localStorage.getItem(LB_KEY))||[];}catch{return[];}}
+function saveGoldenMessage(display,msg,pts){
+  const gb=getGoldenBook();
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  gb.push({name:display,message:msg,score:pts,date:dateStr});
+  localStorage.setItem(GB_KEY,JSON.stringify(gb));
+}
+function getGoldenBook(){try{return JSON.parse(localStorage.getItem(GB_KEY))||[];}catch{return[];}}
+
+// ════════════════════════════════════
+//  LEADERBOARD RENDER
+// ════════════════════════════════════
+let currentTab='scores';
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('tab-scores').classList.toggle('active',tab==='scores');
+  document.getElementById('tab-golden').classList.toggle('active',tab==='golden');
+  renderLeaderboardContent();
+}
+function renderLeaderboardContent(){
+  const list=document.getElementById('lb-list'),win=document.getElementById('lb-winner-msg'),title=document.getElementById('lb-title');
+  list.innerHTML='';
+  if(currentTab==='scores'){
+    title.textContent='Leaderboard';
+    const lb=getLeaderboard();
+    if(!lb.length){list.innerHTML='<div class="empty-lb">No scores yet — be the first! 🎉</div>';win.innerHTML='';}
+    else{
+      const medals=['🥇','🥈','🥉'];
+      lb.forEach((e,i)=>{
+        const isPerfect=e.score===questions.length;
+        const d=document.createElement('div');
+        d.className='lb-item'; d.style.animationDelay=`${i*.06}s`;
+        d.innerHTML=`
+          <span class="lb-rank">${medals[i]||(i+1)}</span>
+          <div class="lb-info">
+            <span class="lb-name">${e.name}</span>
+            ${isPerfect?'<span class="lb-perfect-badge">⭐ PERFECT SCORE</span>':''}
+            <span class="lb-meta">${e.date||''}</span>
+          </div>
+          <span class="lb-score-badge">${e.score} / ${questions.length}</span>`;
+        list.appendChild(d);
+      });
+      const w=lb[0];
+      win.innerHTML=`<strong>${w.name}</strong> leads with ${w.score}/${questions.length} (${Math.round(w.score/questions.length*100)}%) 🍹`;
+    }
+  } else {
+    title.textContent='📖 Golden Book';
+    win.innerHTML='<span style="color:var(--gold);font-size:13px;">Birthday messages for Anagha 🎂</span>';
+    const gb=getGoldenBook();
+    if(!gb.length){list.innerHTML='<div class="empty-lb">No messages yet — be the first to write one! 💌</div>';}
+    else{
+      gb.slice().reverse().forEach((e,i)=>{
+        const d=document.createElement('div');
+        d.className='gb-entry'; d.style.animationDelay=`${i*.07}s`;
+        d.innerHTML=`
+          <div class="gb-entry-header">
+            <span class="gb-author">${e.name}</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="gb-score-chip">${e.score}/${questions.length}</span>
+              <span class="gb-date">${e.date||''}</span>
+            </div>
+          </div>
+          <div class="gb-message">"${e.message}"</div>`;
+        list.appendChild(d);
+      });
+    }
+  }
+}
+
+// ════════════════════════════════════
+//  PASSWORD RESET
+// ════════════════════════════════════
+const RESET_PWD='titou&ana';
+function askResetPassword(){
+  document.getElementById('modal-pwd').value='';
+  document.getElementById('modal-error').textContent='';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-pwd').focus(),200);
+}
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function confirmReset(){
+  if(document.getElementById('modal-pwd').value===RESET_PWD){
+    localStorage.removeItem(LB_KEY); localStorage.removeItem(GB_KEY);
+    closeModal(); renderLeaderboardContent();
+  } else {
+    const err=document.getElementById('modal-error'),inp=document.getElementById('modal-pwd');
+    err.textContent='❌ Wrong password!'; inp.style.borderColor='var(--wrong)'; inp.value='';
+    setTimeout(()=>{err.textContent='';inp.style.borderColor='';},2500);
+  }
+}
+document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════
+let toastTimer;
+function showToast(msg,type){
+  const t=document.getElementById('feedback-toast');
+  t.textContent=msg; t.className=`feedback-toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ════════════════════════════════════
+//  CONFETTI
+// ════════════════════════════════════
+function spawnConfetti(n){
+  const cols=['#e8506a','#d4a853','#3dba7e','#6b9ee8','#f9a8d4','#fde68a'];
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    const sz=7+Math.random()*8;
+    el.style.cssText=`left:${Math.random()*100}vw;background:${cols[~~(Math.random()*cols.length)]};animation-duration:${1.2+Math.random()*1.8}s;animation-delay:${Math.random()*0.8}s;width:${sz}px;height:${sz}px;border-radius:${Math.random()>.5?'50%':'2px'}`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),4000);
+  }
+}
+
+document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')startQuiz();});
+</script>
+</body>
+</html>
