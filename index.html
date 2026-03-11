@@ -774,7 +774,7 @@ function showStreak(n){
 // ════════════════════════════════════
 //  GOLDEN BOOK
 // ════════════════════════════════════
-function submitGoldenMessage(){
+async function submitGoldenMessage(){
   const msg=document.getElementById('gb-msg').value.trim();
   if(msg) await saveGoldenMessage(playerDisplay,msg,score);
   showResults();
