@@ -219,9 +219,9 @@
     ══════════════════════════════ */
     .q-image-wrap {
       width: 100%; border-radius: 16px; overflow: hidden;
-      background: var(--rose-light); position: relative;
+      aspect-ratio: 16/9; background: var(--rose-light); position: relative;
     }
-    .q-image-wrap img { width: 100%; height: auto; object-fit: contain; display: block; }
+    .q-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .q-image-wrap .img-placeholder {
       position: absolute; inset: 0; display: flex;
       align-items: center; justify-content: center; font-size: 48px; opacity: 0.4;
@@ -387,6 +387,65 @@
     .confetti-piece { position: fixed; border-radius: 2px; animation: confettiFall linear forwards; z-index: 200; pointer-events: none; }
     @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
   </style>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set, get, remove, onValue, query, orderByChild } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // ╔══════════════════════════════════════════════════╗
+    // ║  REMPLACE CES VALEURS PAR TON CONFIG FIREBASE   ║
+    // ╚══════════════════════════════════════════════════╝
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDEM5Fi94eseXwv0ABuAYVRkowI4ge60EQ",
+      authDomain:        "birthday-anagha.firebaseapp.com",
+      databaseURL:       "https://birthday-anagha-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "birthday-anagha",
+      storageBucket:     "birthday-anagha.firebasestorage.app",
+      messagingSenderId: "485761109904",
+      appId:             "1:485761109904:web:e1e7d5ca804a552c7cad15"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // ── Expose functions to window so the rest of the JS can call them ──
+    window.fbSaveScore = async function(display, pts) {
+      const nameKey = display.split(' ').slice(1).join('_').toLowerCase().replace(/[^a-z0-9_]/g,'');
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      const existing = await get(ref(db, 'scores/' + nameKey));
+      if (existing.exists() && existing.val().score >= pts) return; // keep best score
+      await set(ref(db, 'scores/' + nameKey), { name: display, score: pts, date: dateStr });
+    };
+
+    window.fbGetLeaderboard = async function() {
+      const snap = await get(ref(db, 'scores'));
+      if (!snap.exists()) return [];
+      const arr = Object.values(snap.val());
+      arr.sort((a,b) => b.score - a.score);
+      return arr;
+    };
+
+    window.fbSaveMessage = async function(display, msg, pts) {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+      await push(ref(db, 'messages'), { name: display, message: msg, score: pts, date: dateStr });
+    };
+
+    window.fbGetMessages = async function() {
+      const snap = await get(ref(db, 'messages'));
+      if (!snap.exists()) return [];
+      return Object.values(snap.val()).reverse();
+    };
+
+    window.fbResetAll = async function() {
+      await remove(ref(db, 'scores'));
+      await remove(ref(db, 'messages'));
+    };
+
+    window.firebaseReady = true;
+    console.log('✅ Firebase connected');
+  </script>
 </head>
 <body>
 
@@ -572,7 +631,7 @@ const questions = [
   { question:"Which dessert would I choose every single time?", options:["Chocolate cake","Tiramisu","Ice cream","Crème brûlée"], answer:"B", image:"https://drive.google.com/thumbnail?id=1w7OOR2JR07YicceZBZnvzhWh8Mrr9-SS&sz=w1000" },
   { question:"If I could live in another city for a year, where would it be?", options:["Tokyo","New York","Milan","Barcelona"], answer:"D", image:"https://drive.google.com/thumbnail?id=1csTvGfvGyCwkri0Nx4anz-XNrSTLYQM5&sz=w1000" },
   { question:"What drink am I most likely to order on a night out?", options:["Espresso martini","Wine","Margarita","Just water actually"], answer:"A", image:"https://drive.google.com/thumbnail?id=1J2MBh-Jmsq_Q0zQtGFVyGrv1akBHb73M&sz=w1000" },
-  { question:"What would my friends say is my most chaotic habit?", options:["Overanalyzing everything","Online shopping late at night","Saying 'no drinks for me' but actually not less than 2 drinks","Planning trips I might never take"], answer:"C", image:"https://drive.google.com/thumbnail?id=1sun5KPeMCvM7-EKAUSJ6--o7hfoawbRE&sz=w1000" },
+  { question:"What would my friends say is my most chaotic habit?", options:["Overanalyzing everything","Online shopping late at night","Saying \'no drinks for me\' but actually not less than 2 drinks","Planning trips I might never take"], answer:"C", image:"https://drive.google.com/thumbnail?id=1sun5KPeMCvM7-EKAUSJ6--o7hfoawbRE&sz=w1000" },
   { question:"If I had to adopt a pet tomorrow, what would it be?", options:["A golden retriever","A tiny chaotic chihuahua","A cat with attitude","A very dramatic parrot"], answer:"D", image:"https://drive.google.com/thumbnail?id=1XkmITXGFsGA-T24B1nnyLeMpWZMvCEN5&sz=w1000" },
   { question:"What would my villain origin story be?", options:["Someone stole my dessert","The Paris metro delayed me one too many times","Someone insulted my outfit","Bad coffee"], answer:"C", image:"https://drive.google.com/thumbnail?id=1vZGzMRRUc9DqUPk5jWH04JSngSbeKlk7&sz=w1000" },
   { question:"If I had to open a random business tomorrow, what would it be?", options:["An art café","A wine bar","A concept store","A dessert place"], answer:"A", image:"https://drive.google.com/thumbnail?id=1E-vNliUAgWulWPkl4xftwSYeKizfqtkN&sz=w1000" },
@@ -717,7 +776,7 @@ function showStreak(n){
 // ════════════════════════════════════
 function submitGoldenMessage(){
   const msg=document.getElementById('gb-msg').value.trim();
-  if(msg) saveGoldenMessage(playerDisplay,msg,score);
+  if(msg) await saveGoldenMessage(playerDisplay,msg,score);
   showResults();
 }
 function skipGoldenBook(){ showResults(); }
@@ -725,8 +784,8 @@ function skipGoldenBook(){ showResults(); }
 // ════════════════════════════════════
 //  RESULTS
 // ════════════════════════════════════
-function showResults(){
-  saveScore(playerDisplay,score);
+async function showResults(){
+  await saveScore(playerDisplay,score);
   document.getElementById('final-score-num').textContent=score;
   document.getElementById('final-score-total').textContent=`/ ${questions.length}`;
   const pct=score/questions.length;
@@ -751,44 +810,38 @@ function showResults(){
 // ════════════════════════════════════
 //  STORAGE
 // ════════════════════════════════════
-const LB_KEY='quiz_lb_v3',GB_KEY='quiz_gb_v1';
-function saveScore(display,pts){
-  const lb=getLeaderboard();
-  const key=display.split(' ').slice(1).join(' ').toLowerCase();
-  const ex=lb.find(e=>e.name.split(' ').slice(1).join(' ').toLowerCase()===key);
-  const now=new Date();
-  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  if(ex){if(pts>ex.score){ex.score=pts;ex.name=display;ex.date=dateStr;}}
-  else lb.push({name:display,score:pts,date:dateStr});
-  lb.sort((a,b)=>b.score-a.score);
-  localStorage.setItem(LB_KEY,JSON.stringify(lb));
+// ── Firebase data layer (replaces localStorage) ──
+async function saveScore(display, pts) {
+  if (window.firebaseReady) await window.fbSaveScore(display, pts);
 }
-function getLeaderboard(){try{return JSON.parse(localStorage.getItem(LB_KEY))||[];}catch{return[];}}
-function saveGoldenMessage(display,msg,pts){
-  const gb=getGoldenBook();
-  const now=new Date();
-  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  gb.push({name:display,message:msg,score:pts,date:dateStr});
-  localStorage.setItem(GB_KEY,JSON.stringify(gb));
+async function getLeaderboard() {
+  if (window.firebaseReady) return await window.fbGetLeaderboard();
+  return [];
 }
-function getGoldenBook(){try{return JSON.parse(localStorage.getItem(GB_KEY))||[];}catch{return[];}}
+async function saveGoldenMessage(display, msg, pts) {
+  if (window.firebaseReady) await window.fbSaveMessage(display, msg, pts);
+}
+async function getGoldenBook() {
+  if (window.firebaseReady) return await window.fbGetMessages();
+  return [];
+}
 
 // ════════════════════════════════════
 //  LEADERBOARD RENDER
 // ════════════════════════════════════
 let currentTab='scores';
-function switchTab(tab){
+async function switchTab(tab){
   currentTab=tab;
   document.getElementById('tab-scores').classList.toggle('active',tab==='scores');
   document.getElementById('tab-golden').classList.toggle('active',tab==='golden');
-  renderLeaderboardContent();
+  await renderLeaderboardContent();
 }
-function renderLeaderboardContent(){
+async function renderLeaderboardContent(){
   const list=document.getElementById('lb-list'),win=document.getElementById('lb-winner-msg'),title=document.getElementById('lb-title');
   list.innerHTML='';
   if(currentTab==='scores'){
     title.textContent='Leaderboard';
-    const lb=getLeaderboard();
+    const lb = await getLeaderboard();
     if(!lb.length){list.innerHTML='<div class="empty-lb">No scores yet — be the first! 🎉</div>';win.innerHTML='';}
     else{
       const medals=['🥇','🥈','🥉'];
@@ -812,7 +865,7 @@ function renderLeaderboardContent(){
   } else {
     title.textContent='📖 Golden Book';
     win.innerHTML='<span style="color:var(--gold);font-size:13px;">Birthday messages for Anagha 🎂</span>';
-    const gb=getGoldenBook();
+    const gb = await getGoldenBook();
     if(!gb.length){list.innerHTML='<div class="empty-lb">No messages yet — be the first to write one! 💌</div>';}
     else{
       gb.slice().reverse().forEach((e,i)=>{
@@ -844,7 +897,7 @@ function askResetPassword(){
   setTimeout(()=>document.getElementById('modal-pwd').focus(),200);
 }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
-function confirmReset(){
+async function confirmReset(){
   if(document.getElementById('modal-pwd').value===RESET_PWD){
     localStorage.removeItem(LB_KEY); localStorage.removeItem(GB_KEY);
     closeModal(); renderLeaderboardContent();
