@@ -188,10 +188,11 @@
        IMAGE
     ══════════════════════════════ */
     .q-image-wrap {
-      width: 100%; border-radius: 16px; overflow: hidden;
-      aspect-ratio: 16/9; background: var(--rose-light); position: relative;
+      width: 100%; border-radius: 16px;
+      background: var(--rose-light); position: relative;
+      display: flex; align-items: center; justify-content: center;
     }
-    .q-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .q-image-wrap img { width: 100%; height: auto; max-height: 280px; object-fit: contain; display: block; border-radius: 16px; }
     .q-image-wrap .img-placeholder {
       position: absolute; inset: 0; display: flex;
       align-items: center; justify-content: center; font-size: 48px; opacity: 0.4;
@@ -846,8 +847,8 @@ function askResetPassword(){
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
 async function confirmReset(){
   if(document.getElementById('modal-pwd').value===RESET_PWD){
-    localStorage.removeItem(LB_KEY); localStorage.removeItem(GB_KEY);
-    closeModal(); renderLeaderboardContent();
+    if(window.firebaseReady) await window.fbResetAll();
+    closeModal(); await renderLeaderboardContent();
   } else {
     const err=document.getElementById('modal-error'),inp=document.getElementById('modal-pwd');
     err.textContent='❌ Wrong password!'; inp.style.borderColor='var(--wrong)'; inp.value='';
